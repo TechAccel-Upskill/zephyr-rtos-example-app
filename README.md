@@ -96,6 +96,69 @@ Once you have built the application, run the following command to flash it:
 west flash
 ```
 
+### Building with Docker
+
+If you prefer to run the full build environment in a container, a helper
+script is provided at `scripts/build_local_via_docker.sh`. The script uses a
+Zephyr-provided Docker image by default and will perform the workspace
+initialization, `west update`, and a `west twister -T app` build inside the
+container.
+
+- **Requirements:** Docker installed on the host. See the Zephyr project for
+  guidance: https://github.com/zephyrproject-rtos
+- **Default image:** `zephyrprojectrtos/zephyr:latest`. Override with the
+  `ZEPHYR_BUILD_IMAGE` environment variable.
+
+Run with:
+
+```shell
+bash scripts/build_local_via_docker.sh
+```
+
+To use a specific image tag or branch:
+
+```shell
+ZEPHYR_BUILD_IMAGE=zephyrprojectrtos/zephyr:main bash scripts/build_local_via_docker.sh
+```
+
+The script mounts the repository into the container and also mounts
+`$HOME/.zephyr-sdks` and `$HOME/.cache` so downloaded SDKs and caches are
+reused between runs.
+
+### Building via local install script
+
+If you want the helper script to install the toolchain and dependencies
+directly on the host (recommended for development when you control the
+machine), use `scripts/build_local_via_install.sh`. The script performs the
+following actions:
+
+- Installs system packages (build-essential, CMake, Ninja, ARM toolchain,
+  device-tree-compiler, etc.) via `apt`.
+- Ensures Python 3.12 is available and creates a `venv` in the repository.
+- Installs `west`, initializes a local west workspace, and runs `west update`.
+- Installs Zephyr Python requirements and the Zephyr SDK (default v0.17.4)
+  under `$HOME/.zephyr-sdk-0.17.4`.
+- Runs `west twister -T app` to build the application and places artifacts in
+  `twister-out/`.
+
+Run with:
+
+```shell
+bash scripts/build_local_via_install.sh
+```
+
+After the script finishes:
+
+- Activate the created virtualenv: `source venv/bin/activate`.
+- The script exports `ZEPHYR_BASE` into the virtualenv activation script so
+  the environment is ready when you `source` it.
+
+Notes:
+
+- The script requires `sudo` to install system packages on Debian/Ubuntu.
+- The script is idempotent and skips re-installing components that are
+  already present.
+
 ### Testing
 
 To execute Twister integration tests, run the following command:
