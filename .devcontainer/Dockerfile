@@ -20,8 +20,10 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
 
-RUN pip3 install --break-system-packages --no-cache-dir --upgrade pip setuptools wheel \
-    && pip3 install --break-system-packages --no-cache-dir west Sphinx
+# --ignore-installed avoids pip trying (and failing) to uninstall the
+# apt-managed pip/setuptools/wheel packages, which have no pip RECORD file.
+RUN pip3 install --break-system-packages --ignore-installed --no-cache-dir \
+        pip setuptools wheel west Sphinx
 
 # Minimal Zephyr SDK with only the arm-zephyr-eabi toolchain, matching the
 # "toolchains: arm-zephyr-eabi" used by the CI build workflow.
