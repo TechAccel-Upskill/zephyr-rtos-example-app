@@ -1,0 +1,24 @@
+{
+  "name": "Zephyr RTOS Example App",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspaces/zephyr-rtos-example-app",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/zephyr-rtos-example-app,type=bind",
+  "remoteUser": "root",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "ms-python.python",
+        "trond-snekvik.simple-rst"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/bin/python3.12"
+      }
+    }
+  },
+  "postCreateCommand": "west init -l . 2>/dev/null; west update"
+}

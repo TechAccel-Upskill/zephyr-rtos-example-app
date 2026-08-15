@@ -10,12 +10,48 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  # Uses the same devcontainer image developers build locally (see
+  # .devcontainer/), published by devcontainer-image.yml.
+  build-linux:
+    name: Build app and tests (devcontainer)
+    runs-on: ubuntu-22.04
+    container: ghcr.io/techaccel-upskill/zephyr-rtos-example-app-devcontainer:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: example-application
+          persist-credentials: false
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-linux-devcontainer-${{ github.run_id }}
+          restore-keys: ccache-linux-devcontainer-
+
+      - name: West init and update
+        working-directory: example-application
+        run: |
+          west init -l .
+          west update
+
+      - name: Build firmware
+        working-directory: example-application
+        run: west twister -T app -v --inline-logs --integration
+
+      - name: Twister Tests
+        working-directory: example-application
+        run: west twister -T tests -v --inline-logs --integration
+
+  # Docker containers aren't available on macOS/Windows GitHub-hosted
+  # runners, so these legs still install the toolchain natively.
+  build-other:
     name: Build app and tests
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-14, macos-15-intel, windows-2022]
+        os: [macos-14, macos-15-intel, windows-2022]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout

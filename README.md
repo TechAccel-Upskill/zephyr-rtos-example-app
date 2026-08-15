@@ -186,16 +186,24 @@ west flash
 
 ### Building with Docker
 
-If you prefer to run the full build environment in a container, a helper
-script is provided at `scripts/build_local_via_docker.sh`. The script uses a
-Zephyr-provided Docker image by default and will perform the workspace
-initialization, `west update`, and a `west twister -T app` build inside the
-container.
+A [Dev Container](.devcontainer/) defines the toolchain (build tools, west,
+Zephyr SDK arm-zephyr-eabi toolchain, cppcheck, doxygen, Sphinx) used both for
+local development (VS Code Dev Containers / GitHub Codespaces) and for
+GitHub Actions CI. The image is built from `.devcontainer/Dockerfile` and
+published by `.github/workflows/devcontainer-image.yml`, so `build.yml`,
+`static-analysis.yml` and `docs.yml` all run inside the exact same image.
 
-- **Requirements:** Docker installed on the host. See the Zephyr project for
-  guidance: https://github.com/zephyrproject-rtos
-- **Default image:** `zephyrprojectrtos/zephyr:latest`. Override with the
-  `ZEPHYR_BUILD_IMAGE` environment variable.
+To open this repository in the dev container, use VS Code's "Reopen in
+Container" command (requires Docker/the Dev Containers extension).
+
+If you prefer a one-shot script instead of opening the dev container, a
+helper is provided at `scripts/build_local_via_docker.sh`. It pulls the same
+published image (building it locally from `.devcontainer/Dockerfile` as a
+fallback), then runs `west update` and `west twister -T app` inside it.
+
+- **Requirements:** Docker installed on the host.
+- **Default image:** `ghcr.io/techaccel-upskill/zephyr-rtos-example-app-devcontainer:latest`.
+  Override with the `ZEPHYR_BUILD_IMAGE` environment variable.
 
 Run with:
 
@@ -203,15 +211,14 @@ Run with:
 bash scripts/build_local_via_docker.sh
 ```
 
-To use a specific image tag or branch:
+To use a locally built image instead:
 
 ```shell
-ZEPHYR_BUILD_IMAGE=zephyrprojectrtos/zephyr:main bash scripts/build_local_via_docker.sh
+ZEPHYR_BUILD_IMAGE=my-local-tag bash scripts/build_local_via_docker.sh
 ```
 
-The script mounts the repository into the container and also mounts
-`$HOME/.zephyr-sdks` and `$HOME/.cache` so downloaded SDKs and caches are
-reused between runs.
+The script mounts the repository into the container so build artifacts are
+available on the host afterwards.
 
 ### Building via local install script
 
