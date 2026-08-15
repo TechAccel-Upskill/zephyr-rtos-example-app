@@ -1,0 +1,68 @@
+name: Ensure Devcontainer Image
+
+# Reusable workflow: checks whether the shared devcontainer image already
+# exists in GHCR before build.yml/static-analysis.yml/docs.yml try to use it
+# as their `container:`. Builds and pushes it only if missing (e.g. first
+# run, or the cache/registry copy was removed), so those workflows never
+# fail with "image not found".
+
+on:
+  workflow_call:
+    outputs:
+      image:
+        description: Fully qualified devcontainer image reference to use in `container:`
+        value: ${{ jobs.ensure.outputs.image }}
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/techaccel-upskill/zephyr-rtos-example-app-devcontainer
+
+jobs:
+  ensure:
+    name: Check/publish image
+    runs-on: ubuntu-22.04
+    outputs:
+      image: ${{ env.IMAGE_NAME }}:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if image already exists
+        id: check
+        run: |
+          if docker manifest inspect "${IMAGE_NAME}:latest" > /dev/null 2>&1; then
+            echo "Image ${IMAGE_NAME}:latest already published"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Image ${IMAGE_NAME}:latest not found; will build it"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker Buildx
+        if: steps.check.outputs.exists == 'false'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push (image missing)
+        if: steps.check.outputs.exists == 'false'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: .devcontainer/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

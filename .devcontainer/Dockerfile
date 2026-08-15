@@ -15,7 +15,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN apt-get update -qq && apt-get install -y --no-install-recommends \
         build-essential cmake ninja-build git curl wget ca-certificates xz-utils \
         python3.12 python3.12-venv python3.12-dev python3-pip \
-        device-tree-compiler gperf ccache \
+        device-tree-compiler gperf ccache file \
         cppcheck doxygen \
     && rm -rf /var/lib/apt/lists/* \
     && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1

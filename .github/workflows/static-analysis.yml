@@ -6,13 +6,20 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
+  # Precheck: make sure the shared devcontainer image exists before relying
+  # on it as a `container:`, building it if it's missing.
+  ensure-image:
+    uses: ./.github/workflows/devcontainer-image-ensure.yml
+
   cppcheck:
     name: cppcheck
+    needs: ensure-image
     runs-on: ubuntu-22.04
     # Same devcontainer image used for local development (cppcheck preinstalled).
-    container: ghcr.io/techaccel-upskill/zephyr-rtos-example-app-devcontainer:latest
+    container: ${{ needs.ensure-image.outputs.image }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

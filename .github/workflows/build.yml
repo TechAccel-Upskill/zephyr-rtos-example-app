@@ -8,14 +8,21 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
+  # Precheck: make sure the shared devcontainer image exists before relying
+  # on it as a `container:`, building it if it's missing.
+  ensure-image:
+    uses: ./.github/workflows/devcontainer-image-ensure.yml
+
   # Uses the same devcontainer image developers build locally (see
   # .devcontainer/), published by devcontainer-image.yml.
   build-linux:
     name: Build app and tests (devcontainer)
+    needs: ensure-image
     runs-on: ubuntu-22.04
-    container: ghcr.io/techaccel-upskill/zephyr-rtos-example-app-devcontainer:latest
+    container: ${{ needs.ensure-image.outputs.image }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
