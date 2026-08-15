@@ -25,5 +25,5 @@ manifest:
     - name: trusted-firmware-a
       remote: trustedfirmware
       repo-path: trusted-firmware-a.git
-      revision: main
+      revision: v2.11.0
       path: tfa

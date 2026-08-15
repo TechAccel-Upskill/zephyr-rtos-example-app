@@ -7,8 +7,6 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/shell/shell.h>
-#include <zephyr/timing/timing.h>
-#include <zephyr/pm/pm.h>
 
 #include <app/drivers/blink.h>
 
@@ -27,12 +25,39 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 K_THREAD_STACK_DEFINE(metrics_stack, METRICS_STACK_SIZE);
 static struct k_thread metrics_thread_data;
 
+/* Callback data for k_thread_foreach */
+struct metrics_cb_data {
+	uint64_t total_cycles;
+};
+
+static void metrics_print_thread(const struct k_thread *t, void *user_data)
+{
+	struct metrics_cb_data *d = (struct metrics_cb_data *)user_data;
+
+#ifdef CONFIG_THREAD_RUNTIME_STATS
+	struct k_thread_runtime_stats stats;
+
+	if (k_thread_runtime_stats_get((struct k_thread *)t, &stats) == 0 &&
+	    d->total_cycles > 0) {
+		uint64_t pct = (stats.execution_cycles * 100ULL) / d->total_cycles;
+
+		LOG_INF("  Thread %p '%s': cycles=%llu cpu=%llu%%",
+			(void *)t,
+			k_thread_name_get((struct k_thread *)t),
+			(unsigned long long)stats.execution_cycles,
+			(unsigned long long)pct);
+	}
+#else
+	ARG_UNUSED(t);
+	ARG_UNUSED(d);
+#endif
+}
+
 /**
  * @brief Report per-thread CPU usage and basic system timing stats.
  *
  * This thread wakes every METRICS_INTERVAL_MS milliseconds and logs:
  *  - Each Zephyr thread's total execution cycles and CPU share.
- *  - A simple interrupt-latency estimate using the Zephyr timing API.
  *
  * The data is intended to be captured over UART and analysed offline
  * as part of the firmware optimisation demonstration.
@@ -45,31 +70,15 @@ static void metrics_thread(void *p1, void *p2, void *p3)
 
 	while (1) {
 #ifdef CONFIG_THREAD_RUNTIME_STATS
-		struct k_thread_runtime_stats stats;
 		struct k_thread_runtime_stats total_stats;
-		int rc;
+		struct metrics_cb_data cb_data = {0};
 
-		rc = k_thread_runtime_stats_all_get(&total_stats);
-		if (rc == 0) {
+		if (k_thread_runtime_stats_all_get(&total_stats) == 0) {
+			cb_data.total_cycles = total_stats.execution_cycles;
 			LOG_INF("=== CPU Load Report ===");
 			LOG_INF("Total execution cycles: %llu",
 				(unsigned long long)total_stats.execution_cycles);
-		}
-
-		struct k_thread *t = _kernel.threads;
-
-		while (t != NULL) {
-			rc = k_thread_runtime_stats_get(t, &stats);
-			if (rc == 0 && total_stats.execution_cycles > 0) {
-				uint64_t pct = (stats.execution_cycles * 100ULL) /
-					       total_stats.execution_cycles;
-				LOG_INF("  Thread %p '%s': cycles=%llu cpu=%llu%%",
-					(void *)t,
-					k_thread_name_get(t),
-					(unsigned long long)stats.execution_cycles,
-					(unsigned long long)pct);
-			}
-			t = (struct k_thread *)t->next_thread;
+			k_thread_foreach(metrics_print_thread, &cb_data);
 		}
 #endif /* CONFIG_THREAD_RUNTIME_STATS */
 

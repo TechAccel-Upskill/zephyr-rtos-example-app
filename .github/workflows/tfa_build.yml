@@ -67,7 +67,7 @@ jobs:
 
       - name: Clone Trusted Firmware-A
         run: |
-          git clone --depth=1 \
+          git clone --depth=1 --branch v2.11.0 \
             https://git.trustedfirmware.org/TF-A/trusted-firmware-a.git \
             tfa
 
@@ -108,7 +108,7 @@ jobs:
 
       - name: Clone Trusted Firmware-A (for fiptool)
         run: |
-          git clone --depth=1 \
+          git clone --depth=1 --branch v2.11.0 \
             https://git.trustedfirmware.org/TF-A/trusted-firmware-a.git \
             tfa
 
