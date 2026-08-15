@@ -24,7 +24,7 @@ static int example_sensor_sample_fetch(const struct device *dev,
 				      enum sensor_channel chan)
 {
 	const struct example_sensor_config *config = dev->config;
-	struct example_sensor_data *data = dev->data;
+	struct example_sensor_data *const data = dev->data;
 	int ret;
 
 	if (chan != SENSOR_CHAN_ALL && chan != SENSOR_CHAN_PROX) {
@@ -44,7 +44,7 @@ static int example_sensor_channel_get(const struct device *dev,
 				     enum sensor_channel chan,
 				     struct sensor_value *val)
 {
-	struct example_sensor_data *data = dev->data;
+	const struct example_sensor_data *data = dev->data;
 
 	if (chan != SENSOR_CHAN_PROX) {
 		return -ENOTSUP;

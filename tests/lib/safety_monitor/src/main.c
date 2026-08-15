@@ -6,8 +6,10 @@
 
 static struct safety_monitor monitor;
 
-static void setup(void)
+static void setup(void *fixture)
 {
+	ARG_UNUSED(fixture);
+
 	safety_monitor_init(&monitor, &(const struct safety_monitor_config){
 		.warning_samples = 2,
 		.emergency_samples = 4,

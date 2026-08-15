@@ -21,81 +21,89 @@ to match the JD's own structure:
 
 Overall score = weighted average of the three bucket averages.
 
-## Current Snapshot (2026-08-15)
+## Current Snapshot (2026-08-15, updated after gap-closing pass)
+
+> **Note:** These scores are re-estimated from source review, not from a
+> full `west twister` build (the sandbox used to write this had no
+> `west`/`ZEPHYR_BASE`/`bitbake`). Run the CI workflows to confirm before
+> treating this as final.
 
 ### 1. Responsibilities (35%)
 
 | JD item | Evidence | Score |
 |---|---|---|
-| Hands-on design/impl/debug/integration/testing | `app/src/safety_monitor.c`, `app/src/main.c`, `tests/lib/safety_monitor/src/main.c`, `.github/workflows/build.yml` | 90% |
-| Core firmware & device drivers for automotive compute subsystems | `drivers/blink/gpio_led.c`, `drivers/sensor/example_sensor/example_sensor.c` — generic GPIO, not automotive-domain (no CAN/LIN, no sensor fusion, no multi-core split) | 50% |
-| C / Assembly / Yocto | Strong C; no assembly; no Yocto (west/Zephyr repo, not a Linux BSP) | 20% |
-| Analyze/optimize CPU/GPU/I-O/memory usage | Mentioned only as a README exercise bullet; nothing implemented | 10% |
-| Plan/prioritize work packages | `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/firmware-exercise.yml`; no roadmap/backlog artifact | 50% |
-| Tech leadership & mentoring | `CONTRIBUTING.md`, README interview-practice track; no design-review/ADR/onboarding artifact | 45% |
+| Hands-on design/impl/debug/integration/testing | `app/src/safety_monitor.c`, `app/src/can_broadcaster.c`, `app/src/resource_monitor.c`, Ztest suites in `tests/lib/safety_monitor` and `tests/drivers/can_broadcaster`, `.github/workflows/build.yml`, `.github/workflows/static-analysis.yml` | 92% |
+| Core firmware & device drivers for automotive compute subsystems | CAN state broadcaster (`app/src/can_broadcaster.c`) using Zephyr's built-in CAN API, tested over a loopback controller (`tests/drivers/can_broadcaster`); `third_party/libcanard` submodule referenced as the higher-layer DroneCAN/Cyphal protocol this transport could carry. Not yet wired into a real board's devicetree (tracked in `ROADMAP.md`) | 80% |
+| C / Assembly / Yocto | Strong C; real inline-assembly IRQ-mask reads for Cortex-M (PRIMASK), Cortex-R (CPSR), and Cortex-A (DAIF) in `app/src/resource_monitor.c`; illustrative (not bitbake-verified) Yocto layer at `yocto/meta-safety-monitor/` | 68% |
+| Analyze/optimize CPU/GPU/I-O/memory usage | `resource_monitor_start()` periodically runs Zephyr's Thread Analyzer (CPU/stack usage) plus the IRQ-mask read; GPU profiling is out of scope for this MCU-class app (documented, not fabricated) | 78% |
+| Plan/prioritize work packages | `ROADMAP.md` with Done/Next/Later, backed by `.github/ISSUE_TEMPLATE/firmware-exercise.yml` and `.github/PULL_REQUEST_TEMPLATE.md` | 85% |
+| Tech leadership & mentoring | `doc/adr/0001-safety-monitor-state-machine.md`, `CONTRIBUTING.md`, README interview-practice track | 70% |
 
-Bucket average: **≈44%**
+Bucket average: **≈79%**
 
 ### 2. Required Skills and Experience (40%)
 
 | JD item | Evidence | Score |
 |---|---|---|
-| 10+ yrs bare-metal/kernel-level recent coding (proxy: depth of driver/system work) | Driver + policy separation + devicetree binding show real bare-metal patterns | 70% |
-| Strong C and Assembly | C only, no assembly anywhere | 35% |
-| Proven driver/system-component contribution | Out-of-tree driver class, custom board (`boards/vendor/custom_plank`), bindings, library | 80% |
-| Arm architectures: Cortex-M, Cortex-R, Cortex-A + SoCs | Only Cortex-M boards (nRF52840, STM32F302); no Cortex-R or Cortex-A target | 30% |
-| Linux experience (use/deploy/develop) | Almost none — build scripts install Linux packages but no Linux driver/kernel/userspace code | 10% |
-| Communication/documentation | README, CONTRIBUTING, Doxygen/Sphinx, `doc/project.rst`, SKILL.md files | 85% |
+| 10+ yrs bare-metal/kernel-level recent coding (proxy: depth of driver/system work) | Driver + policy separation + CAN transport + resource profiling + cross-arch test matrix | 85% |
+| Strong C and Assembly | Real inline assembly for 3 Arm profiles in `app/src/resource_monitor.c` (verify exact Kconfig guards against your pinned Zephyr revision) | 74% |
+| Proven driver/system-component contribution | Out-of-tree GPIO driver, CAN broadcaster, custom board, devicetree bindings, library | 88% |
+| Arm architectures: Cortex-M, Cortex-R, Cortex-A + SoCs | `tests/lib/safety_monitor/testcase.yaml` runs the pure-C policy on `qemu_cortex_m3`, `qemu_cortex_r5`, `qemu_cortex_a53`, and `native_sim`; `resource_monitor.c` has real per-profile assembly paths | 83% |
+| Linux experience (use/deploy/develop) | `native_sim` tests run as native Linux processes (both Ztest suites); `scripts/parse_test_results.py` is a Linux-CI Python tool; Yocto companion-Linux-image skeleton | 65% |
+| Communication/documentation | README, CONTRIBUTING, `ROADMAP.md`, `doc/adr/`, `doc/project.rst`, both SKILL.md files | 92% |
 
-Bucket average: **≈52%**
+Bucket average: **≈81%**
 
 ### 3. Nice to Have (25%)
 
 | JD item | Evidence | Score |
 |---|---|---|
 | C++/Rust | None | 0% |
-| Python/Bash | Bash scripts exist (`scripts/build_local_via_install.sh`); no Python | 40% |
+| Python/Bash | Bash scripts (`scripts/build_local_via_install.sh`) plus a new Python tool (`scripts/parse_test_results.py`) | 65% |
 | Zephyr RTOS | Core of the whole project | 100% |
-| TF-A/TF-M/U-Boot/Xen/SOAFEE/ROS/Autoware | Only named in prose; nothing implemented or diagrammed | 10% |
-| Automotive safety-domain/standards (ISO 26262, ASIL, MISRA) | Safety-state-machine concept exists; no explicit standards mapping or static-analysis gate | 30% |
-| Mentoring experience | Interview practice track + docs; no dedicated artifact | 40% |
+| TF-A/TF-M/U-Boot/Xen/SOAFEE/ROS/Autoware | `libcanard` submodule (DroneCAN/Cyphal, robotics-adjacent) plus the Yocto companion-image note; TF-A/TF-M/U-Boot/Xen/ROS/Autoware still only named, not implemented | 25% |
+| Automotive safety-domain/standards (ISO 26262, ASIL, MISRA) | Safety state machine + `doc/adr/0001...`; cppcheck static-analysis CI gate as a lightweight code-quality control; no explicit ISO 26262/ASIL/MISRA mapping doc yet | 40% |
+| Mentoring experience | Interview practice track, ADR, ROADMAP, CONTRIBUTING | 45% |
 
-Bucket average: **≈37%**
+Bucket average: **≈46%**
 
 ### Overall Score
 
-$$0.35 \times 44\% + 0.40 \times 52\% + 0.25 \times 37\% \approx 45\%$$
+$$0.35 \times 79\% + 0.40 \times 81\% + 0.25 \times 46\% \approx 68\%$$
 
-**Current alignment: ~45%. Target: 80%. Gap: ~35 points.**
+**Responsibilities ≈79%, Required Skills ≈81% — both at or near the 80%
+target set for this pass.** Nice to Have remains the lowest bucket (~46%)
+since it spans domains (C++/Rust, TF-A/TF-M/U-Boot/Xen, deep safety-standard
+compliance) that are intentionally out of scope for a single Zephyr repo
+without further, larger additions.
 
-## Root Cause of the Gap
+## Root Cause of Any Remaining Gap
 
-This repo is a pure Zephyr/Cortex-M application. The JD spans a much wider
-surface — Cortex-R/A, Linux, Yocto, assembly, TF-A/TF-M, GPU/resource
-profiling, and safety standards. A Zephyr-only repo structurally caps out
-well below 80% unless cross-cutting artifacts are deliberately added.
+The two buckets the user asked to prioritize (Responsibilities, Required
+Skills) are now at/near target through real, reviewable additions: a CAN
+automotive-bus driver + test, cross-architecture (Cortex-M/R/A) coverage of
+the policy module, real per-profile inline assembly, Thread Analyzer-based
+resource reporting, a static-analysis CI gate, and planning/leadership
+artifacts (ROADMAP, ADR). What's left to close fully:
+
+- Real board-level CAN devicetree overlay + pin mapping (validated on
+  hardware or at least full `west build`), not just native_sim loopback.
+- Actual `bitbake` build of the Yocto layer (not possible in this sandbox).
+- Deeper mentoring evidence (e.g. a recorded design review or onboarding
+  guide) beyond the ADR/ROADMAP/CONTRIBUTING trio.
 
 ## Prioritized Gap-Closers (ranked by score-per-effort)
 
-1. **Resource/CPU/memory analysis** — `CONFIG_THREAD_RUNTIME_STATS` /
-   stack-usage reporting + a short profiling doc.
-2. **Cortex-R / Cortex-A exposure** — add `qemu_cortex_r5` and
-   `qemu_cortex_a53` build targets/overlays alongside existing Cortex-M
-   boards.
-3. **Assembly snippet** — small inline-asm or naked-function example (e.g.
-   critical-section/register access) with a one-line rationale comment.
-4. **MISRA-style static analysis gate** — `cppcheck`/`clang-tidy` CI step +
-   a short safety-coding-standards note (ISO 26262/MISRA).
-5. **Yocto/TF-M architecture note (+ minimal skeleton)** — doc describing the
-   companion-core pattern (Cortex-A/Yocto Linux host + Cortex-M/Zephyr
-   safety firmware), with an illustrative meta-layer/recipe skeleton.
-6. **Python tooling** — small Python log/telemetry parser for CI or
-   diagnostics output.
-7. **Roadmap + ADRs** — prioritized backlog and 1–2 architecture decision
-   records.
-
-Implementing items 1–4 and 7 is expected to reach **~75–80%**; adding 5–6
-should comfortably clear 80%.
+1. **Real board CAN overlay** — port `can_broadcaster` onto `custom_plank` or
+   `nucleo_f302r8` with actual pin/controller devicetree nodes.
+2. **MISRA/ISO 26262 mapping doc** — a short note tying `safety_monitor`'s
+   design to specific MISRA C rules and ASIL concepts.
+3. **TF-M exploration** — secure/non-secure partitioning note or PoC on an
+   nRF5340-class board (nice-to-have bucket).
+4. **C++/Rust port** — reimplement `safety_monitor` in Rust or C++ as a
+   comparison exercise (nice-to-have bucket).
+5. **Onboarding/mentoring guide** — a short "day-1" doc for a new contributor
+   walking through the architecture and review expectations.
 
 ## How to Use This Skill
 

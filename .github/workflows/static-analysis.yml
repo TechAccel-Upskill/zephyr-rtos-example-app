@@ -1,0 +1,28 @@
+name: Static Analysis
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  cppcheck:
+    name: cppcheck
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install cppcheck
+        run: sudo apt-get update && sudo apt-get install -y cppcheck
+
+      - name: Run cppcheck
+        run: |
+          cppcheck --error-exitcode=1 --enable=warning,style,performance,portability \
+            --inline-suppr --suppress=missingIncludeSystem \
+            -I include \
+            app/src drivers lib

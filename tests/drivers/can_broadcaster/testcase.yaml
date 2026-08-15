@@ -1,0 +1,11 @@
+common:
+  tags:
+    - can
+    - automotive
+  # CAN loopback is a Zephyr-provided virtual controller, so this test runs
+  # as a native Linux process without any real CAN hardware.
+  platform_allow:
+    - native_sim
+tests:
+  drivers.can_broadcaster:
+    harness: ztest

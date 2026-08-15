@@ -33,3 +33,20 @@ config APP_FAULT_SAMPLES
 	int "Invalid samples before sensor fault"
 	default 3
 	range 1 255
+
+config APP_RESOURCE_MONITOR
+	bool "Periodic CPU/stack resource reporting"
+	select THREAD_ANALYZER
+	select THREAD_NAME
+	select THREAD_RUNTIME_STATS
+	default y
+	help
+	  Periodically logs per-thread CPU load and stack usage using
+	  Zephyr's thread analyzer subsystem, alongside a bare-metal
+	  interrupt-mask read implemented in inline assembly.
+
+config APP_RESOURCE_MONITOR_PERIOD_MS
+	int "Resource report period (ms)"
+	default 5000
+	range 100 3600000
+	depends on APP_RESOURCE_MONITOR

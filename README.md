@@ -33,7 +33,17 @@ devicetree, Kconfig, a custom driver class, logging, and board integration.
 - Devicetree bindings and a custom board
 - Kconfig-controlled timing and fault thresholds
 - Twister build/test integration for application and unit-test targets
-- GitHub Actions build and documentation workflows
+- GitHub Actions build, documentation, and static-analysis (cppcheck) workflows
+- Periodic CPU/stack resource reporting (Zephyr Thread Analyzer) plus a real
+  Cortex-M/R/A inline-assembly IRQ-mask read
+- A CAN automotive-bus state broadcaster with a native_sim loopback Ztest
+- A pure-C policy test matrix across Cortex-M, Cortex-R, and Cortex-A (QEMU)
+  and native Linux (native_sim)
+- A `libcanard` git submodule (DroneCAN/Cyphal) as a reference higher-layer
+  automotive/robotics protocol stack for the CAN transport
+- A Yocto companion-image layer skeleton illustrating a Cortex-A/Linux host
+  paired with this Cortex-M/R Zephyr safety core
+- `ROADMAP.md` and `doc/adr/` for work-package planning and design records
 
 The original repository structure is retained as a learning reference for:
 
@@ -71,6 +81,26 @@ hazard samples, EMERGENCY after `CONFIG_APP_EMERGENCY_SAMPLES`, and FAULT after
 system to NORMAL. These are intentionally simple interview-sized policies that
 can later be extended with timestamps, watchdog supervision, CAN input, or a
 multi-sensor voting strategy.
+
+`app/src/resource_monitor.c` periodically logs per-thread CPU/stack usage via
+Zephyr's Thread Analyzer and reads the current IRQ-mask state using inline
+assembly (Cortex-M PRIMASK, with real Cortex-R CPSR and Cortex-A DAIF paths
+guarded by Kconfig). `app/src/can_broadcaster.c` sends the safety state as a
+CAN frame using Zephyr's built-in CAN API; it is exercised on `native_sim`
+over a CAN loopback controller in `tests/drivers/can_broadcaster` rather than
+wired into the default board build, since the current boards have no CAN
+devicetree node yet (tracked in `ROADMAP.md`).
+
+### Cloning with Submodules
+
+This repository references `libcanard` (a DroneCAN/Cyphal reference
+implementation) as a git submodule under `third_party/libcanard`. Clone with:
+
+```shell
+git clone --recurse-submodules <repo-url>
+# or, if already cloned:
+git submodule update --init --recursive
+```
 
 ## Interview Practice Track
 

@@ -2,8 +2,14 @@ common:
   tags:
     - safety
     - unit
+  # The policy module is pure C with no devicetree/board dependency, so it
+  # is used here as a cheap way to exercise Cortex-M, Cortex-R and Cortex-A
+  # targets side by side (all via QEMU) plus a native Linux process.
   platform_allow:
     - native_sim
+    - qemu_cortex_m3
+    - qemu_cortex_r5
+    - qemu_cortex_a53
 tests:
   lib.safety_monitor:
     harness: ztest

@@ -12,4 +12,5 @@ project(app LANGUAGES C)
 target_sources(app PRIVATE
 	src/main.c
 	src/safety_monitor.c
+	src/resource_monitor.c
 )
