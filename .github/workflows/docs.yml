@@ -35,8 +35,9 @@ jobs:
       - name: Install doxygen ${{ matrix.doxygen-version }}
         run: |
           DOXYGEN_VERSION="${{ matrix.doxygen-version }}"
-          wget --no-verbose "https://github.com/doxygen/doxygen/releases/download/Release_${DOXYGEN_VERSION//./_}/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz"
-          tar xf doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz
+          DOXYGEN_RELEASE="$(printf '%s' "$DOXYGEN_VERSION" | tr '.' '_')"
+          wget --no-verbose "https://github.com/doxygen/doxygen/releases/download/Release_${DOXYGEN_RELEASE}/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz"
+          tar xf "doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz"
           echo "${PWD}/doxygen-${DOXYGEN_VERSION}/bin" >> $GITHUB_PATH
           pip install --break-system-packages -q -r doc/requirements.txt
 
