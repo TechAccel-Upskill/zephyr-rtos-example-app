@@ -1,201 +1,176 @@
-# Zephyr Example Application
+# Zephyr + Trusted Firmware-A Firmware Optimization Demo
 
-<a href="https://github.com/zephyrproject-rtos/example-application/actions/workflows/build.yml?query=branch%3Amain">
-  <img src="https://github.com/zephyrproject-rtos/example-application/actions/workflows/build.yml/badge.svg?event=push">
+> **ARM Staff Developer Interview Showcase**
+> Demonstrates firmware optimization skills across CPU, I/O, and power domains
+> by integrating Trusted Firmware-A (TF-A) BL31 with a Zephyr RTOS application.
+
+<a href="https://github.com/TechAccel-Upskill/zephyr-rtos-example-app/actions/workflows/build.yml">
+  <img src="https://github.com/TechAccel-Upskill/zephyr-rtos-example-app/actions/workflows/build.yml/badge.svg">
 </a>
-<a href="https://github.com/zephyrproject-rtos/example-application/actions/workflows/docs.yml?query=branch%3Amain">
-  <img src="https://github.com/zephyrproject-rtos/example-application/actions/workflows/docs.yml/badge.svg?event=push">
-</a>
-<a href="https://zephyrproject-rtos.github.io/example-application">
-  <img alt="Documentation" src="https://img.shields.io/badge/documentation-3D578C?logo=sphinx&logoColor=white">
-</a>
-<a href="https://zephyrproject-rtos.github.io/example-application/doxygen">
-  <img alt="API Documentation" src="https://img.shields.io/badge/API-documentation-3D578C?logo=c&logoColor=white">
+<a href="https://github.com/TechAccel-Upskill/zephyr-rtos-example-app/actions/workflows/tfa_build.yml">
+  <img src="https://github.com/TechAccel-Upskill/zephyr-rtos-example-app/actions/workflows/tfa_build.yml/badge.svg">
 </a>
 
-This repository contains a Zephyr example application. The main purpose of this
-repository is to serve as a reference on how to structure Zephyr-based
-applications. Some of the features demonstrated in this example are:
+---
 
-- Basic [Zephyr application][app_dev] skeleton
-- [Zephyr workspace applications][workspace_app]
-- [Zephyr modules][modules]
-- [West T2 topology][west_t2]
-- [Custom boards][board_porting]
-- Custom [devicetree bindings][bindings]
-- Out-of-tree [drivers][drivers]
-- Out-of-tree libraries
-- Example CI configuration (using GitHub Actions)
-- Custom [west extension][west_ext]
-- Custom [Zephyr runner][runner_ext]
-- Doxygen and Sphinx documentation boilerplate
+## Project Goal
 
-This repository is versioned together with the [Zephyr main tree][zephyr]. This
-means that every time that Zephyr is tagged, this repository is tagged as well
-with the same version number, and the [manifest](west.yml) entry for `zephyr`
-will point to the corresponding Zephyr tag. For example, the `example-application`
-v2.6.0 will point to Zephyr v2.6.0. Note that the `main` branch always
-points to the development branch of Zephyr, also `main`.
+This repository shows how to:
 
-[app_dev]: https://docs.zephyrproject.org/latest/develop/application/index.html
-[workspace_app]: https://docs.zephyrproject.org/latest/develop/application/index.html#zephyr-workspace-app
-[modules]: https://docs.zephyrproject.org/latest/develop/modules.html
-[west_t2]: https://docs.zephyrproject.org/latest/develop/west/workspaces.html#west-t2
-[board_porting]: https://docs.zephyrproject.org/latest/guides/porting/board_porting.html
-[bindings]: https://docs.zephyrproject.org/latest/guides/dts/bindings.html
-[drivers]: https://docs.zephyrproject.org/latest/reference/drivers/index.html
-[zephyr]: https://github.com/zephyrproject-rtos/zephyr
-[west_ext]: https://docs.zephyrproject.org/latest/develop/west/extensions.html
-[runner_ext]: https://docs.zephyrproject.org/latest/develop/modules.html#external-runners
+1. **Integrate TF-A BL31** into a Zephyr workspace — TF-A provides the EL3
+   runtime (PSCI, SMCCC) while Zephyr runs in Non-Secure EL1.
+2. **Demonstrate power-management optimizations** — tickless idle,
+   `WFI`/`WFE` usage, and peripheral clock gating.
+3. **Report CPU load and interrupt metrics** via a background Zephyr thread
+   and an interactive shell command.
+4. **Produce a combined FIP image** (TF-A BL31 + Zephyr BL33) in CI that
+   can be loaded directly onto an ARM FVP or evaluation board.
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      ARM SoC                                │
+│                                                             │
+│   EL3  ┌──────────────────────────────┐                    │
+│        │  BL31 — TF-A Runtime (Secure)│  SMC ◄────────┐   │
+│        │  • PSCI CPU on/off/suspend    │               │   │
+│        │  • SMCCC dispatcher           │               │   │
+│        └──────────────┬───────────────┘               │   │
+│                 ERET  │                                │   │
+│   EL1  ┌─────────────▼──────────────────────────┐    │   │
+│   (NS) │  Zephyr RTOS (Non-Secure)               │    │   │
+│        │  • Tickless kernel (WFI idle)            │────┘   │
+│        │  • Power-managed peripherals             │        │
+│        │  • CPU-load metrics thread               │        │
+│        │  • Shell: `metrics` command              │        │
+│        └────────────────────────────────────────────┘      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+BL2 authenticates and loads both BL31 and Zephyr (BL33). BL31 stays resident
+at EL3 and services `SMC` calls from Zephyr for power management and platform
+services.
+
+---
+
+## Repository Layout
+
+```
+.
+├── app/                   Zephyr application (metrics thread, shell cmd)
+│   ├── src/main.c         Main + CPU-load reporting thread
+│   └── prj.conf           Kconfig: PM, tickless kernel, shell, tracing
+├── analysis/
+│   ├── cpu_optimization.md        WFI/WFE, big.LITTLE, cache tuning
+│   ├── io_optimization.md         DMA vs PIO benchmarks, clock gating
+│   └── tfa_integration_notes.md   Boot flow, PSCI call table, SMCCC
+├── scripts/
+│   └── build_tfa.sh       Build TF-A BL31 and stage output binaries
+├── tfa/                   ← populated by `west update` (TF-A source)
+├── west.yml               Workspace manifest (Zephyr + TF-A projects)
+└── .github/workflows/
+    ├── build.yml          Existing Zephyr Twister CI
+    └── tfa_build.yml      TF-A BL31 + combined FIP CI pipeline
+```
+
+---
 
 ## Getting Started
 
-Before getting started, make sure you have a proper Zephyr development
-environment. Follow the official
-[Zephyr Getting Started Guide](https://docs.zephyrproject.org/latest/getting_started/index.html).
+### Prerequisites
 
-### Initialization
+- Python 3.12+
+- `west` (`pip install west`)
+- ARM cross-compiler: `aarch64-linux-gnu-gcc` (for TF-A)
+  and `arm-zephyr-eabi-gcc` (for Zephyr Cortex-M targets)
+- Zephyr SDK — see the
+  [Zephyr Getting Started Guide](https://docs.zephyrproject.org/latest/getting_started/index.html)
 
-The first step is to initialize the workspace folder (``my-workspace``) where
-the ``example-application`` and all Zephyr modules will be cloned. Run the following
-command:
+### Initialize the workspace
 
 ```shell
-# initialize my-workspace for the example-application (main branch)
-west init -m https://github.com/zephyrproject-rtos/example-application --mr main my-workspace
-# update Zephyr modules
+west init -m https://github.com/TechAccel-Upskill/zephyr-rtos-example-app \
+    --mr main my-workspace
 cd my-workspace
-west update
+west update   # clones Zephyr modules AND TF-A into tfa/
 ```
 
-### Building and running
-
-To build the application, run the following command:
+### Build Zephyr
 
 ```shell
-cd example-application
+cd zephyr-rtos-example-app
 west build -b $BOARD app
 ```
 
-where `$BOARD` is the target board.
+where `$BOARD` is your target (e.g. `custom_plank`, `nucleo_f302r8`).
 
-You can use the `custom_plank` board found in this
-repository. Note that Zephyr sample boards may be used if an
-appropriate overlay is provided (see `app/boards`).
-
-A sample debug configuration is also provided. To apply it, run the following
-command:
+### Build TF-A BL31
 
 ```shell
-west build -b $BOARD app -- -DEXTRA_CONF_FILE=debug.conf
+# Default target: FVP platform, AArch64
+bash scripts/build_tfa.sh
+
+# Override platform and architecture
+bash scripts/build_tfa.sh tc2 aarch64
 ```
 
-Once you have built the application, run the following command to flash it:
+The BL31 binary is placed at `tfa-build/bl31.bin`.
 
-```shell
-west flash
-```
-
-### Building with Docker
-
-If you prefer to run the full build environment in a container, a helper
-script is provided at `scripts/build_local_via_docker.sh`. The script uses a
-Zephyr-provided Docker image by default and will perform the workspace
-initialization, `west update`, and a `west twister -T app` build inside the
-container.
-
-- **Requirements:** Docker installed on the host. See the Zephyr project for
-  guidance: https://github.com/zephyrproject-rtos
-- **Default image:** `zephyrprojectrtos/zephyr:latest`. Override with the
-  `ZEPHYR_BUILD_IMAGE` environment variable.
-
-Run with:
+### Build via Docker (all-in-one)
 
 ```shell
 bash scripts/build_local_via_docker.sh
 ```
 
-To use a specific image tag or branch:
+---
 
-```shell
-ZEPHYR_BUILD_IMAGE=zephyrprojectrtos/zephyr:main bash scripts/build_local_via_docker.sh
+## Optimization Highlights
+
+| Area | Technique | Estimated Saving |
+|------|-----------|-----------------|
+| CPU idle | `CONFIG_TICKLESS_KERNEL` + WFI | ~35 % avg current |
+| I/O throughput | DMA for bulk transfers | ~5× faster, CPU free |
+| Peripheral power | `pm_device` clock gating | varies by SoC |
+| Cache pressure | Aligned DMA buffers, `.fast_text` section | ISR latency −20 % |
+
+Full analysis:
+- [`analysis/cpu_optimization.md`](analysis/cpu_optimization.md)
+- [`analysis/io_optimization.md`](analysis/io_optimization.md)
+- [`analysis/tfa_integration_notes.md`](analysis/tfa_integration_notes.md)
+
+---
+
+## Running the Metrics Shell Command
+
+After flashing, connect a serial terminal (115 200 8N1) and type:
+
+```
+uart:~$ metrics
+Total execution cycles: 4827392
 ```
 
-The script mounts the repository into the container and also mounts
-`$HOME/.zephyr-sdks` and `$HOME/.cache` so downloaded SDKs and caches are
-reused between runs.
+The background `metrics` thread also logs per-thread CPU shares every 2 s via
+the Zephyr logging subsystem.
 
-### Building via local install script
+---
 
-If you want the helper script to install the toolchain and dependencies
-directly on the host (recommended for development when you control the
-machine), use `scripts/build_local_via_install.sh`. The script performs the
-following actions:
+## CI Pipeline
 
-- Installs system packages (build-essential, CMake, Ninja, ARM toolchain,
-  device-tree-compiler, etc.) via `apt`.
-- Ensures Python 3.12 is available and creates a `venv` in the repository.
-- Installs `west`, initializes a local west workspace, and runs `west update`.
-- Installs Zephyr Python requirements and the Zephyr SDK (default v0.17.4)
-  under `$HOME/.zephyr-sdk-0.17.4`.
-- Runs `west twister -T app` to build the application and places artifacts in
-  `twister-out/`.
+The [`tfa_build.yml`](.github/workflows/tfa_build.yml) workflow:
 
-Run with:
+1. Builds the Zephyr app with Twister and uploads `zephyr.bin`.
+2. Clones TF-A and builds `bl31.bin` for the FVP platform.
+3. Combines both into a FIP image using `fiptool` and uploads `fip.bin`.
 
-```shell
-bash scripts/build_local_via_install.sh
-```
+---
 
-After the script finishes:
+## Key References
 
-- Activate the created virtualenv: `source venv/bin/activate`.
-- The script exports `ZEPHYR_BASE` into the virtualenv activation script so
-  the environment is ready when you `source` it.
+- [Trusted Firmware-A Documentation](https://trustedfirmware-a.readthedocs.io/)
+- [ARM PSCI Specification (DEN0022)](https://developer.arm.com/documentation/den0022/latest)
+- [Zephyr Power Management](https://docs.zephyrproject.org/latest/services/pm/index.html)
+- [Zephyr Example Application](https://github.com/zephyrproject-rtos/example-application)
 
-Notes:
-
-- The script requires `sudo` to install system packages on Debian/Ubuntu.
-- The script is idempotent and skips re-installing components that are
-  already present.
-
-### Testing
-
-To execute Twister integration tests, run the following command:
-
-```shell
-west twister -T tests --integration
-```
-
-### Documentation
-
-A minimal documentation setup is provided for Doxygen and Sphinx. To build the
-documentation first change to the ``doc`` folder:
-
-```shell
-cd doc
-```
-
-Before continuing, check if you have Doxygen installed. It is recommended to
-use the same Doxygen version used in [CI](.github/workflows/docs.yml). To
-install Sphinx, make sure you have a Python installation in place and run:
-
-```shell
-pip install -r requirements.txt
-```
-
-API documentation (Doxygen) can be built using the following command:
-
-```shell
-doxygen
-```
-
-The output will be stored in the ``_build_doxygen`` folder. Similarly, the
-Sphinx documentation (HTML) can be built using the following command:
-
-```shell
-make html
-```
-
-The output will be stored in the ``_build_sphinx`` folder. You may check for
-other output formats other than HTML by running ``make help``.

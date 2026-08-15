@@ -1,0 +1,153 @@
+name: TFA + Zephyr Build
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-zephyr:
+    name: Build Zephyr app
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: example-application
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Zephyr project (including west update for TF-A)
+        uses: zephyrproject-rtos/action-zephyr-setup@v1
+        with:
+          app-path: example-application
+          toolchains: arm-zephyr-eabi
+          ccache-cache-key: ubuntu-22.04
+
+      - name: Build Zephyr firmware (Twister)
+        working-directory: example-application
+        run: |
+          west twister -T app -v --inline-logs --integration
+
+      - name: Upload Zephyr firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zephyr-firmware
+          path: example-application/twister-out/**/zephyr/zephyr.bin
+          if-no-files-found: warn
+
+  build-tfa:
+    name: Build Trusted Firmware-A (BL31)
+    runs-on: ubuntu-22.04
+    needs: build-zephyr
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: example-application
+          persist-credentials: false
+
+      - name: Install TF-A build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            gcc-aarch64-linux-gnu \
+            make \
+            device-tree-compiler \
+            python3-pip \
+            python3-cryptography \
+            python3-pyelftools
+          pip3 install pycryptodome
+
+      - name: Clone Trusted Firmware-A
+        run: |
+          git clone --depth=1 \
+            https://git.trustedfirmware.org/TF-A/trusted-firmware-a.git \
+            tfa
+
+      - name: Build TF-A BL31 for FVP
+        env:
+          CROSS_COMPILE: aarch64-linux-gnu-
+        run: |
+          make -C tfa \
+            PLAT=fvp \
+            ARCH=aarch64 \
+            CROSS_COMPILE="${CROSS_COMPILE}" \
+            DEBUG=0 \
+            LOG_LEVEL=20 \
+            BUILD_BASE=$PWD/tfa-build \
+            bl31
+
+      - name: Upload TF-A BL31 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfa-bl31
+          path: tfa-build/fvp/release/bl31.bin
+
+  combine-firmware:
+    name: Combine TF-A + Zephyr FIP
+    runs-on: ubuntu-22.04
+    needs: [build-zephyr, build-tfa]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: example-application
+          persist-credentials: false
+
+      - name: Install fiptool dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y gcc-aarch64-linux-gnu make
+
+      - name: Clone Trusted Firmware-A (for fiptool)
+        run: |
+          git clone --depth=1 \
+            https://git.trustedfirmware.org/TF-A/trusted-firmware-a.git \
+            tfa
+
+      - name: Build fiptool
+        run: make -C tfa/tools/fiptool
+
+      - name: Download Zephyr firmware
+        uses: actions/download-artifact@v4
+        with:
+          name: zephyr-firmware
+          path: zephyr-artifacts
+
+      - name: Download TF-A BL31
+        uses: actions/download-artifact@v4
+        with:
+          name: tfa-bl31
+          path: tfa-artifacts
+
+      - name: Create FIP image
+        run: |
+          # Find the first zephyr.bin produced by the Twister run
+          ZEPHYR_BIN=$(find zephyr-artifacts -name 'zephyr.bin' | head -1)
+          if [[ -z "${ZEPHYR_BIN}" ]]; then
+            echo "No zephyr.bin found in artifacts — skipping FIP creation."
+            exit 0
+          fi
+
+          mkdir -p fip-out
+          tfa/tools/fiptool/fiptool create \
+            --tb-fw tfa-artifacts/bl31.bin \
+            --nt-fw "${ZEPHYR_BIN}" \
+            fip-out/fip.bin
+
+          echo "FIP image created:"
+          ls -lh fip-out/fip.bin
+
+      - name: Upload combined FIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-fip
+          path: fip-out/fip.bin
+          if-no-files-found: warn

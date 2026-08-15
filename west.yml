@@ -8,6 +8,8 @@ manifest:
   remotes:
     - name: zephyrproject-rtos
       url-base: https://github.com/zephyrproject-rtos
+    - name: trustedfirmware
+      url-base: https://git.trustedfirmware.org/TF-A
 
   projects:
     - name: zephyr
@@ -20,3 +22,8 @@ manifest:
           - cmsis_6    # required by the ARM port for Cortex-M
           - hal_nordic # required by the custom_plank board (Nordic based)
           - hal_stm32  # required by the nucleo_f302r8 board (STM32 based)
+    - name: trusted-firmware-a
+      remote: trustedfirmware
+      repo-path: trusted-firmware-a.git
+      revision: main
+      path: tfa
