@@ -13,3 +13,23 @@ endmenu
 module = APP
 module-str = APP
 source "subsys/logging/Kconfig.template.log_config"
+
+config APP_SAMPLE_PERIOD_MS
+	int "Safety monitor sample period (ms)"
+	default 100
+	range 1 60000
+
+config APP_WARNING_SAMPLES
+	int "Valid hazard samples before warning"
+	default 2
+	range 1 255
+
+config APP_EMERGENCY_SAMPLES
+	int "Valid hazard samples before emergency"
+	default 5
+	range APP_WARNING_SAMPLES 255
+
+config APP_FAULT_SAMPLES
+	int "Invalid samples before sensor fault"
+	default 3
+	range 1 255

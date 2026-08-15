@@ -8,6 +8,7 @@ This is a simple Sphinx documentation setup for ``example-application``.
    :caption: Contents
 
    zephyr
+   project
 
 Indices and tables
 ==================

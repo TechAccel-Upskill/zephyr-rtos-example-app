@@ -1,21 +1,41 @@
-# Zephyr Example Application
+# Zephyr Safety Monitor Node
 
-<a href="https://github.com/zephyrproject-rtos/example-application/actions/workflows/build.yml?query=branch%3Amain">
-  <img src="https://github.com/zephyrproject-rtos/example-application/actions/workflows/build.yml/badge.svg?event=push">
+<a href="https://github.com/TechAccel-Upskill/zephyr-rtos-example-app/actions/workflows/build.yml?query=branch%3Amain">
+  <img src="https://github.com/TechAccel-Upskill/zephyr-rtos-example-app/actions/workflows/build.yml/badge.svg?event=push">
 </a>
-<a href="https://github.com/zephyrproject-rtos/example-application/actions/workflows/docs.yml?query=branch%3Amain">
-  <img src="https://github.com/zephyrproject-rtos/example-application/actions/workflows/docs.yml/badge.svg?event=push">
+<a href="https://github.com/TechAccel-Upskill/zephyr-rtos-example-app/actions/workflows/docs.yml?query=branch%3Amain">
+  <img src="https://github.com/TechAccel-Upskill/zephyr-rtos-example-app/actions/workflows/docs.yml/badge.svg?event=push">
 </a>
-<a href="https://zephyrproject-rtos.github.io/example-application">
+<a href="https://techaccel-upskill.github.io/zephyr-rtos-example-app">
   <img alt="Documentation" src="https://img.shields.io/badge/documentation-3D578C?logo=sphinx&logoColor=white">
 </a>
-<a href="https://zephyrproject-rtos.github.io/example-application/doxygen">
+<a href="https://techaccel-upskill.github.io/zephyr-rtos-example-app/doxygen">
   <img alt="API Documentation" src="https://img.shields.io/badge/API-documentation-3D578C?logo=c&logoColor=white">
 </a>
 
-This repository contains a Zephyr example application. The main purpose of this
-repository is to serve as a reference on how to structure Zephyr-based
-applications. Some of the features demonstrated in this example are:
+This repository is a hands-on firmware project for preparing for senior and
+staff-level embedded systems interviews. It models a small safety monitor for
+an autonomous vehicle or robot: a GPIO-backed proximity input is sampled,
+classified by a deterministic safety state machine, and exposed through a
+status LED.
+
+The project deliberately keeps policy separate from hardware. That makes the
+decision logic testable on a host while the Zephyr application exercises
+devicetree, Kconfig, a custom driver class, logging, and board integration.
+
+## What This Project Demonstrates
+
+- Safety-oriented state transitions: NORMAL, WARNING, EMERGENCY, and FAULT
+- Consecutive-sample filtering and explicit sensor fault handling
+- A pure C policy module covered by a native Ztest suite
+- A GPIO sensor driver with error propagation and channel validation
+- An out-of-tree blink driver class with a device API
+- Devicetree bindings and a custom board
+- Kconfig-controlled timing and fault thresholds
+- Twister build/test integration for application and unit-test targets
+- GitHub Actions build and documentation workflows
+
+The original repository structure is retained as a learning reference for:
 
 - Basic [Zephyr application][app_dev] skeleton
 - [Zephyr workspace applications][workspace_app]
@@ -29,6 +49,44 @@ applications. Some of the features demonstrated in this example are:
 - Custom [west extension][west_ext]
 - Custom [Zephyr runner][runner_ext]
 - Doxygen and Sphinx documentation boilerplate
+
+## Architecture
+
+```text
+GPIO proximity input
+  |
+  v
+example_sensor driver ---> sensor_sample_fetch/channel_get
+  |
+  v
+safety_monitor (pure C policy) ---> state transition + fault decision
+  |
+  v
+blink driver class ---> GPIO status indicator
+```
+
+The monitor enters WARNING after `CONFIG_APP_WARNING_SAMPLES` consecutive
+hazard samples, EMERGENCY after `CONFIG_APP_EMERGENCY_SAMPLES`, and FAULT after
+`CONFIG_APP_FAULT_SAMPLES` invalid samples. A valid clear sample returns the
+system to NORMAL. These are intentionally simple interview-sized policies that
+can later be extended with timestamps, watchdog supervision, CAN input, or a
+multi-sensor voting strategy.
+
+## Interview Practice Track
+
+1. Explain the device initialization order and the devicetree-to-driver path.
+2. Add hysteresis or a time-based debounce without blocking the sensor thread.
+3. Add a watchdog and define the behavior when the monitor thread stalls.
+4. Replace the GPIO sensor with an I2C sensor while preserving the policy API.
+5. Add a second sensor and implement disagreement detection and degraded mode.
+6. Measure stack, CPU, and memory usage; document the result and tradeoffs.
+7. Review the code for concurrency, integer overflow, initialization failures,
+   and fail-safe output behavior.
+8. Port the application to another Arm Cortex-M board and add its overlay.
+9. Write a design note covering safety assumptions, diagnostics, and recovery.
+
+These exercises map to the Arm role's driver development, low-level debugging,
+resource analysis, testing, documentation, and technical leadership themes.
 
 This repository is versioned together with the [Zephyr main tree][zephyr]. This
 means that every time that Zephyr is tagged, this repository is tagged as well

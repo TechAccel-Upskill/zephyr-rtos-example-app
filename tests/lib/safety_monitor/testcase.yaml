@@ -1,0 +1,9 @@
+common:
+  tags:
+    - safety
+    - unit
+  platform_allow:
+    - native_sim
+tests:
+  lib.safety_monitor:
+    harness: ztest

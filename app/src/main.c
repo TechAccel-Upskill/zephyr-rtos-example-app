@@ -8,22 +8,66 @@
 #include <zephyr/logging/log.h>
 
 #include <app/drivers/blink.h>
+#include <app/safety_monitor.h>
 
 #include <app_version.h>
 
 LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 
-#define BLINK_PERIOD_MS_STEP 100U
-#define BLINK_PERIOD_MS_MAX  1000U
+#define WARNING_BLINK_PERIOD_MS   500U
+#define EMERGENCY_BLINK_PERIOD_MS 100U
+#define FAULT_BLINK_PERIOD_MS     250U
+
+static const char *state_name(enum safety_monitor_state state)
+{
+	switch (state) {
+	case SAFETY_MONITOR_NORMAL:
+		return "NORMAL";
+	case SAFETY_MONITOR_WARNING:
+		return "WARNING";
+	case SAFETY_MONITOR_EMERGENCY:
+		return "EMERGENCY";
+	case SAFETY_MONITOR_FAULT:
+		return "FAULT";
+	default:
+		return "UNKNOWN";
+	}
+}
+
+static unsigned int state_blink_period(enum safety_monitor_state state)
+{
+	switch (state) {
+	case SAFETY_MONITOR_WARNING:
+		return WARNING_BLINK_PERIOD_MS;
+	case SAFETY_MONITOR_EMERGENCY:
+		return EMERGENCY_BLINK_PERIOD_MS;
+	case SAFETY_MONITOR_FAULT:
+		return FAULT_BLINK_PERIOD_MS;
+	case SAFETY_MONITOR_NORMAL:
+	default:
+		return 0U;
+	}
+}
 
 int main(void)
 {
 	int ret;
-	unsigned int period_ms = BLINK_PERIOD_MS_MAX;
 	const struct device *sensor, *blink;
-	struct sensor_value last_val = { 0 }, val;
+	struct sensor_value val;
+	struct safety_monitor monitor;
+	enum safety_monitor_state previous_state;
+	enum safety_monitor_state state;
+	int sample_ret;
+	int blink_ret;
 
-	printk("Zephyr Example Application %s\n", APP_VERSION_STRING);
+	safety_monitor_init(&monitor, &(const struct safety_monitor_config){
+		.warning_samples = CONFIG_APP_WARNING_SAMPLES,
+		.emergency_samples = CONFIG_APP_EMERGENCY_SAMPLES,
+		.fault_samples = CONFIG_APP_FAULT_SAMPLES,
+	});
+	previous_state = safety_monitor_state(&monitor);
+
+	printk("Zephyr Safety Monitor Node %s\n", APP_VERSION_STRING);
 
 	sensor = DEVICE_DT_GET(DT_NODELABEL(example_sensor));
 	if (!device_is_ready(sensor)) {
@@ -43,36 +87,32 @@ int main(void)
 		return 0;
 	}
 
-	printk("Use the sensor to change LED blinking period\n");
+	printk("Safety monitor ready: warning=%u samples, emergency=%u samples\n",
+	       CONFIG_APP_WARNING_SAMPLES, CONFIG_APP_EMERGENCY_SAMPLES);
 
 	while (1) {
-		ret = sensor_sample_fetch(sensor);
-		if (ret < 0) {
-			LOG_ERR("Could not fetch sample (%d)", ret);
-			return 0;
+		sample_ret = sensor_sample_fetch(sensor);
+		if (sample_ret == 0) {
+			sample_ret = sensor_channel_get(sensor, SENSOR_CHAN_PROX, &val);
 		}
 
-		ret = sensor_channel_get(sensor, SENSOR_CHAN_PROX, &val);
-		if (ret < 0) {
-			LOG_ERR("Could not get sample (%d)", ret);
-			return 0;
+		state = safety_monitor_update(&monitor, sample_ret == 0,
+					      sample_ret == 0 && val.val1 != 0);
+		if (sample_ret < 0) {
+			LOG_ERR("Sensor sample failed (%d)", sample_ret);
 		}
 
-		if ((last_val.val1 == 0) && (val.val1 == 1)) {
-			if (period_ms == 0U) {
-				period_ms = BLINK_PERIOD_MS_MAX;
-			} else {
-				period_ms -= BLINK_PERIOD_MS_STEP;
+		if (state != previous_state) {
+			LOG_INF("Safety state: %s -> %s", state_name(previous_state),
+				state_name(state));
+			blink_ret = blink_set_period_ms(blink, state_blink_period(state));
+			if (blink_ret < 0) {
+				LOG_ERR("Could not update safety indicator (%d)", blink_ret);
 			}
-
-			printk("Proximity detected, setting LED period to %u ms\n",
-			       period_ms);
-			blink_set_period_ms(blink, period_ms);
+			previous_state = state;
 		}
 
-		last_val = val;
-
-		k_sleep(K_MSEC(100));
+		k_sleep(K_MSEC(CONFIG_APP_SAMPLE_PERIOD_MS));
 	}
 
 	return 0;

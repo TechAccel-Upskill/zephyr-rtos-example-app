@@ -1,0 +1,25 @@
+name: Firmware exercise
+description: Propose an interview-relevant firmware extension
+title: "exercise: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What embedded-systems capability should this exercise develop?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: What behavior, tests, and documentation should be delivered?
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints and safety assumptions
+      description: Note timing, memory, hardware, or failure-mode constraints.
