@@ -5,9 +5,8 @@
 # as the module CMake entry point (see zephyr/module.yml).
 
 
-# This is needed so that custom driver classes using system calls are taken into
-# account
-zephyr_syscall_include_directories(include)
+# Register custom driver system calls with Zephyr's syscall generator.
+zephyr_syscall_header(include/app/drivers/blink.h)
 
 zephyr_include_directories(include)
 

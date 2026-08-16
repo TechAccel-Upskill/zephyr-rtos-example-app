@@ -20,21 +20,17 @@ jobs:
     needs: ensure-image
     runs-on: ubuntu-22.04
     # Same devcontainer image used for local development (Sphinx preinstalled);
-    # the specific doxygen release below is still downloaded per-matrix-entry
-    # since this matrix intentionally exercises two doxygen versions.
+    # the specific doxygen release below is downloaded for reproducibility.
     container: ${{ needs.ensure-image.outputs.image }}
-    strategy:
-      matrix:
-        doxygen-version: [1.9.6]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Install doxygen ${{ matrix.doxygen-version }}
+      - name: Install doxygen 1.9.6
         run: |
-          DOXYGEN_VERSION="${{ matrix.doxygen-version }}"
+          DOXYGEN_VERSION="1.9.6"
           DOXYGEN_RELEASE="$(printf '%s' "$DOXYGEN_VERSION" | tr '.' '_')"
           wget --no-verbose "https://github.com/doxygen/doxygen/releases/download/Release_${DOXYGEN_RELEASE}/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz"
           tar xf "doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz"
@@ -53,11 +49,11 @@ jobs:
           mv _build_sphinx/html/* deploy
 
       - name: Setup pages
-        if: github.event_name != 'pull_request' && matrix.doxygen-version == '1.14.0'
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v4
 
       - name: Upload pages artifact
-        if: github.event_name != 'pull_request' && matrix.doxygen-version == '1.14.0'
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: doc/deploy
@@ -66,7 +62,7 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: docs-doxygen-${{ matrix.doxygen-version }}
+          name: docs-doxygen-1.9.6
           path: doc/deploy
 
   deploy:

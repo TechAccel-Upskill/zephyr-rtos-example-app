@@ -35,6 +35,8 @@ static void *suite_setup(void)
 
 	k_msgq_init(&state_msgq, state_msgq_buf, sizeof(struct can_frame), 4);
 
+	zassert_equal(can_set_mode(can_dev, CAN_MODE_LOOPBACK), 0,
+		      "Could not enable CAN loopback mode");
 	zassert_equal(can_start(can_dev), 0, "Could not start CAN controller");
 	zassert_true(can_add_rx_filter(can_dev, rx_callback, NULL, &filter) >= 0,
 		    "Could not add RX filter");

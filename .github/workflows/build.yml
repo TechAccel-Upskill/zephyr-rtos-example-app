@@ -37,11 +37,12 @@ jobs:
           key: ccache-linux-devcontainer-${{ github.run_id }}
           restore-keys: ccache-linux-devcontainer-
 
-      - name: West init and update
+      - name: Set up Zephyr workspace
         working-directory: example-application
         run: |
           west init -l .
           west update
+          pip install --break-system-packages -q -r "$(west topdir)/zephyr/scripts/requirements.txt"
 
       - name: Build firmware
         working-directory: example-application
@@ -50,49 +51,3 @@ jobs:
       - name: Twister Tests
         working-directory: example-application
         run: west twister -T tests -v --inline-logs --integration
-
-  # Docker containers aren't available on macOS/Windows GitHub-hosted
-  # runners, so these legs still install the toolchain natively.
-  build-other:
-    name: Build app and tests
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-14, macos-15-intel, windows-2022]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          path: example-application
-          persist-credentials: false
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.12
-
-      - name: Setup Zephyr project
-        uses: zephyrproject-rtos/action-zephyr-setup@v1
-        with:
-          app-path: example-application
-          toolchains: arm-zephyr-eabi
-          ccache-cache-key: ${{ matrix.os }}
-
-      - name: Build firmware
-        working-directory: example-application
-        shell: bash
-        run: |
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            EXTRA_TWISTER_FLAGS="--short-build-path -O/tmp/twister-out"
-          fi
-          west twister -T app -v --inline-logs --integration $EXTRA_TWISTER_FLAGS
-
-      - name: Twister Tests
-        working-directory: example-application
-        shell: bash
-        run: |
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            EXTRA_TWISTER_FLAGS="--short-build-path -O/tmp/twister-out"
-          fi
-          west twister -T tests -v --inline-logs --integration $EXTRA_TWISTER_FLAGS

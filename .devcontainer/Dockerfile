@@ -3,7 +3,7 @@
 # identical tool versions. See ../README.md for usage.
 FROM ubuntu:24.04
 
-ARG ZEPHYR_SDK_VERSION=0.17.4
+ARG ZEPHYR_SDK_VERSION=1.0.1
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     PYTHONUNBUFFERED=1 \
@@ -15,7 +15,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN apt-get update -qq && apt-get install -y --no-install-recommends \
         build-essential cmake ninja-build git curl wget ca-certificates xz-utils \
         python3.12 python3.12-venv python3.12-dev python3-pip \
-        device-tree-compiler gperf ccache file \
+        device-tree-compiler gperf ccache file gcc-multilib \
         cppcheck doxygen \
     && rm -rf /var/lib/apt/lists/* \
     && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
@@ -25,8 +25,7 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
 RUN pip3 install --break-system-packages --ignore-installed --no-cache-dir \
         pip setuptools wheel west Sphinx
 
-# Minimal Zephyr SDK with only the arm-zephyr-eabi toolchain, matching the
-# "toolchains: arm-zephyr-eabi" used by the CI build workflow.
+# Minimal Zephyr SDK with the ARM toolchains used by the firmware and tests.
 RUN arch="$(uname -m)" \
     && case "$arch" in \
          x86_64) sdk_arch=x86_64 ;; \
@@ -38,6 +37,7 @@ RUN arch="$(uname -m)" \
     && mkdir -p "${ZEPHYR_SDK_INSTALL_DIR}" \
     && tar -xf /tmp/zephyr-sdk-minimal.tar.xz -C "${ZEPHYR_SDK_INSTALL_DIR}" --strip-components=1 \
     && rm -f /tmp/zephyr-sdk-minimal.tar.xz \
-    && "${ZEPHYR_SDK_INSTALL_DIR}/setup.sh" -t arm-zephyr-eabi -h -c
+    && "${ZEPHYR_SDK_INSTALL_DIR}/setup.sh" \
+        -t arm-zephyr-eabi -t aarch64-zephyr-elf -h -c
 
 WORKDIR /workspaces/zephyr-rtos-example-app

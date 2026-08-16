@@ -55,6 +55,7 @@ fi
 
 echo "Fetching Zephyr and project dependencies via west update..."
 west update
+pip install --break-system-packages -q -r "$(west topdir)/zephyr/scripts/requirements.txt"
 
 echo "Building firmware with west twister (app)..."
 west twister -T app -v --inline-logs --integration

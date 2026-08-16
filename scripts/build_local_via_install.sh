@@ -207,8 +207,8 @@ export PYTHONPATH="$ZEPHYR_BASE/scripts:$PYTHONPATH"
 echo "export PYTHONPATH=$ZEPHYR_BASE/scripts:\$PYTHONPATH" >> venv/bin/activate
 
 # Install Zephyr SDK
-print_step "Installing Zephyr SDK (v0.17.4)..."
-SDK_VERSION="0.17.4"
+print_step "Installing Zephyr SDK (v1.0.1)..."
+SDK_VERSION="1.0.1"
 SDK_ARCH="x86_64"
 OS_NAME=$(uname -s | tr '[:upper:]' '[:lower:]')
 SDK_FILE="zephyr-sdk-${SDK_VERSION}_linux-${SDK_ARCH}.tar.xz"

@@ -231,8 +231,8 @@ following actions:
   device-tree-compiler, etc.) via `apt`.
 - Ensures Python 3.12 is available and creates a `venv` in the repository.
 - Installs `west`, initializes a local west workspace, and runs `west update`.
-- Installs Zephyr Python requirements and the Zephyr SDK (default v0.17.4)
-  under `$HOME/.zephyr-sdk-0.17.4`.
+- Installs Zephyr Python requirements and the Zephyr SDK (default v1.0.1)
+  under `$HOME/.zephyr-sdk-1.0.1`.
 - Runs `west twister -T app` to build the application and places artifacts in
   `twister-out/`.
 
