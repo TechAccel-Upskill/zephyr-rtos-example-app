@@ -56,7 +56,7 @@ static void report_work_handler(struct k_work *work)
 
 	/* cppcheck-suppress knownConditionTrueFalse ; depends on CONFIG_CPU_CORTEX_M */
 	LOG_INF("Resource snapshot: irq_masked=%u", read_irq_mask() != 0U);
-	thread_analyzer_print();
+	thread_analyzer_print(0);
 
 	k_work_schedule(&report_work, K_MSEC(CONFIG_APP_RESOURCE_MONITOR_PERIOD_MS));
 }
