@@ -46,8 +46,8 @@ jobs:
 
       - name: Build firmware
         working-directory: example-application
-        run: west twister -T app -v --inline-logs --integration
+        run: west twister -T app -v --inline-logs --integration --outdir build
 
       - name: Twister Tests
         working-directory: example-application
-        run: west twister -T tests -v --inline-logs --integration
+        run: west twister -T tests -v --inline-logs --integration --outdir build

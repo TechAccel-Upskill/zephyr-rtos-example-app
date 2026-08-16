@@ -286,10 +286,10 @@ if [ -n "$ZEPHYR_BASE" ]; then
 fi
 
 print_step "Building application firmware (this may take a few minutes)..."
-west twister -T app -v --inline-logs --integration
+west twister -T app -v --inline-logs --integration --outdir build
 
-if [ -d "twister-out" ]; then
-    print_success "Firmware build complete - artifacts in twister-out/"
+if [ -d "build" ]; then
+    print_success "Firmware build complete - artifacts in build/"
 else
     print_error "Build artifacts not found"
 fi
@@ -303,7 +303,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     print_section "STEP 5: Running Tests"
     
     print_step "Running Zephyr tests..."
-    west twister -T tests -v --inline-logs --integration
+    west twister -T tests -v --inline-logs --integration --outdir build
     
     print_success "Tests completed"
 fi
@@ -321,6 +321,6 @@ echo "  ✓ Firmware built successfully"
 echo ""
 echo "Next steps:"
 echo "  • Activate venv: source venv/bin/activate"
-echo "  • View build artifacts: ls -la twister-out/"
-echo "  • Clean build: rm -rf twister-out/"
+echo "  • View build artifacts: ls -la build/"
+echo "  • Clean build: rm -rf build/"
 echo ""

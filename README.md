@@ -233,8 +233,8 @@ following actions:
 - Installs `west`, initializes a local west workspace, and runs `west update`.
 - Installs Zephyr Python requirements and the Zephyr SDK (default v1.0.1)
   under `$HOME/.zephyr-sdk-1.0.1`.
-- Runs `west twister -T app` to build the application and places artifacts in
-  `twister-out/`.
+- Runs `west twister -T app --outdir build` to build the application and
+  places artifacts in `build/`.
 
 Run with:
 

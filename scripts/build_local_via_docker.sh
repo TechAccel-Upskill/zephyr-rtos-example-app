@@ -58,11 +58,11 @@ west update
 pip install --break-system-packages -q -r "$(west topdir)/zephyr/scripts/requirements.txt"
 
 echo "Building firmware with west twister (app)..."
-west twister -T app -v --inline-logs --integration
+west twister -T app -v --inline-logs --integration --outdir build
 '
 
 # After container run, fix ownership of generated files
 print_step "Restoring file ownership to host user"
 sudo chown -R "$(id -u):$(id -g)" "$REPO_ROOT" || true
 
-print "Done. Build artifacts (if any) are in twister-out/ in the repository root."
+print "Done. Build artifacts (if any) are in build/ in the repository root."
